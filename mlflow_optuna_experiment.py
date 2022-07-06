@@ -1,16 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jun 29 09:58:12 2022
-
-@author: bonnyaigergo
-"""
-
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from torchmetrics.functional import accuracy
+# from torchmetrics.functional import accuracy
+# from torchmetrics import Accuracy
 import pandas as pd
 import torchaudio
 
@@ -20,7 +14,6 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import itertools
 import optuna
-# MLFlow
 import mlflow
 import mlflow.tensorflow
 import mlflow.pytorch
@@ -29,9 +22,13 @@ from mlflow import pytorch
 import os
 # os.chdir(r'C:\Users\bonnyaigergo\Documents\GitHub\SoundProcessing')
 
-from datasets import create_train_val_dataset
+from datasets import prepare_inputdata, CustomDataset
 from utils import plot_loss, embedding_histogram, EarlyStopping
+import utils
+from model_builder import build_classifier_model
 import model_params as mpar
+
+# TODO: accuracy
 
 
 model_list = ['Conv2D', 'RNN']
@@ -40,23 +37,19 @@ MODEL_TYPE = 'Conv2D'
 # TRACKING_URI = 'http://127.0.0.1:5000'
 
 
-def build_classifier_model(n_timesteps: int, 
-                            n_freq: int,  
-                            n_classes: int,
-                            batch_size: int,
-                            model: nn.Module,
-                            params: dict):
-        
-    classifier_model = model(n_timesteps, 
-                            n_freq, 
-                            n_classes, 
-                            batch_size,
-                            params)
-    
-    return classifier_model
+X, y = prepare_inputdata(dataset_name="UrbanSound", transformation=mfcc_transform)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=123)
 
-
+train_set = CustomDataset(X_train, y_train)
+val_set = CustomDataset(X_val, y_val)
+         
 def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_TYPE):
+    
+     """
+     Objective for optuna hyperparameter optimization
+     NN Classifier is trained within the objective
+     MLFlow Tracker is set
+     """
     
      # mlflow.set_tracking_uri(TRACKING_URI)
      mlflow.set_experiment(experiment_name=dataset+"_"+model_type+"_exp")
@@ -67,40 +60,14 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
          
          BATCH_SIZE = 64 #trial.suggest_categorical("batch_size", [16, 32, 64])
          N_EPOCH = 3
-         
-         train_set, val_set = create_train_val_dataset(dataset)
-    
-         # Create data loader for pytorch
+        
          train_dataloader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
          val_dataloader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=True)
          
          device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
          
-         conv2d_arch_params = {
-               'conv1_ch_in': 1, 
-               'conv1_ch_out': 4, # trial.suggest_int(name="conv1_ch_out", low=3, high=6, step=1),
-               'conv1_kernel_size': 5,
-               'conv1_stride': 1,
-               'conv1_padding': 0,
-               'pool1_kernel_size': 2,
-               'pool1_stride': 2, # default value is kernel_size
-               'pool1_padding': 0,
-               'multi_block': True, # trial.suggest_categorical("multi_block", [True, False]),
-               'conv2_ch_out': 8,
-               'conv2_kernel_size': 5,
-               'conv2_stride': 1,
-               'conv2_padding': 0,
-               'pool2_kernel_size': 2,
-               'pool2_stride': 2, # default value is kernel_size
-               'pool2_padding': 0
-               }
-         
-         model_params = {'classifier': NetConv2D,
-                    'arch_params': conv2d_arch_params,
-                    }
-         
-         n_timesteps = 64
-         n_freq = 44
+         n_timesteps = X.shape[2]
+         n_freq = X.shape[3]
          n_classes = 10
          
          model = build_classifier_model(n_timesteps, 
@@ -133,12 +100,10 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
                 
                 # Training
                 model = model.train()
-                for seq_true, target in enumerate(train_dataloader):
-                    # seq_true, target = next(iter(train_dataloader))
+                for i, (input_sample, target) in enumerate(train_dataloader):
                     optimizer.zero_grad()
-                    seq_true = seq_true.to(device)
-                    target = target.to(device)
-                    pred = model(seq_true)
+                    input_sample, target = input_sample.to(device), target.to(device)
+                    pred = model(input_sample)
                     loss = loss_fn(pred, target)
                     loss.backward()
                     optimizer.step()
@@ -147,10 +112,9 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
                # Validation
                 model = model.eval()
                 with torch.no_grad():
-                    for seq_true, target in enumerate(val_dataloader):
-                        seq_true = seq_true.to(device)
-                        target = target.to(device)
-                        pred = model(seq_true)
+                    for i, (input_sample, target) in enumerate(val_dataloader):
+                        input_sample, target = input_sample.to(device), target.to(device)
+                        pred = model(input_sample)
                         loss = loss_fn(pred, target)
                         val_loss_batches.append(loss.item())
                 
@@ -158,9 +122,9 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
                 val_loss_epoch = np.mean(val_loss_batches)
                 loss_diff_epoch = np.abs(train_loss_epoch - val_loss_epoch)
                 
-                # mlflow.log_params(trial.params)
-                # mlflow.log_metric("train_loss", train_loss_epoch)
-                # mlflow.log_metric('val_loss', val_loss_epoch)
+                mlflow.log_params(trial.params)
+                mlflow.log_metric("train_loss", train_loss_epoch)
+                mlflow.log_metric('val_loss', val_loss_epoch)
                 
                 history['train'].append(train_loss_epoch)
                 history['val'].append(val_loss_epoch)

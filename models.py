@@ -62,7 +62,7 @@ class NetConv2D(nn.Module):
             )
         self.flatten = nn.Flatten()
         self.fc = nn.Linear(self.conv_block_output_size, self.n_classes)
-        self.relu = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.2)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
@@ -71,8 +71,9 @@ class NetConv2D(nn.Module):
             x = self.conv2(x)
         x = self.flatten(x)
         x = self.fc(x)
-        x = self.relu(x)
-        return self.softmax(x)
+        # x = self.relu(x)
+        x = self.softmax(x)
+        return x
     
     
 class NetConv2D_v2(nn.Module):
@@ -118,7 +119,7 @@ class NetConv2D_v2(nn.Module):
         self.flatten = nn.Flatten()
         self.fc = nn.Linear(self.conv_block_output_size, self.n_classes)
         # self.relu = nn.Dropout(0.2)
-        # self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # x = x.reshape((self.batch_size, self.n_features, self.n_timesteps))
@@ -143,16 +144,18 @@ class NetConv2D_v2(nn.Module):
         x = self.fc(x)
         print(f"fc out {x.shape}")
         return x
-    
-net = NetConv2D(n_timesteps=64,
-                n_freq=44,
-                n_classes=10, 
-                batch_size=64,
-                params=model_params['arch_params'])
+  
+# seq_true, target = next(iter(train_dataloader))
+# seq_true.shape
 
-seq_true, target = next(iter(train_dataloader))
-seq_true.shape
-net.forward(seq_true)
+# net = NetConv2D(n_timesteps=seq_true.shape[2],
+#                 n_freq=seq_true.shape[3],
+#                 n_classes=10, 
+#                 batch_size=64,
+#                 params=model_params['arch_params'])
+
+
+# net.forward(seq_true)
 
 # calc_conv_or_pool_output_size(input_size=64, kernel_size=5, stride=1, padding=0)
 # calc_conv_or_pool_output_size(input_size=60, kernel_size=2, stride=2, padding=0)
