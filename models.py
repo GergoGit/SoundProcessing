@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun 29 07:18:44 2022
-
-@author: bonnyaigergo
-
 https://www.kaggle.com/code/adinishad/urbansound-classification-with-pytorch-and-fun
 https://docs.microsoft.com/en-us/learn/modules/intro-audio-classification-pytorch/4-speech-model
 

@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar  8 01:22:19 2022
-
-@author: bonnyaigergo
-
 EarlyStopping:
 https://debuggercafe.com/using-learning-rate-scheduler-and-early-stopping-with-pytorch/
 https://github.com/Bjarten/early-stopping-pytorch/blob/master/pytorchtools.py

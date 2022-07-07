@@ -1,8 +1,4 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sun Jun 26 08:47:52 2022
-
-@author: bonnyaigergo
 tried to load arff file without success:
 https://folk.ntnu.no/staal/assets/sw/mit/arff/
 https://discuss.analyticsvidhya.com/t/loading-arff-type-files-in-python/27419
@@ -35,6 +31,24 @@ import os
 # os.chdir(r'C:\Users\bonnyaigergo\Documents\GitHub\SoundProcessing')
 
 from audio_preprocessing import resample_if_necessary, stereo_to_mono_if_necessary, cut_if_necessary, right_pad_if_necessary
+
+dataset_dict = {'UrbanSound': {'n_observations': 8_730,
+                                'n_classes': 10,
+                                'loc': r'D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data',
+                                'class_dict': {0: "air_conditioner",
+                                               1: "car_horn",
+                                               2: "children_playing",
+                                               3: "dog_bark",
+                                               4: "drilling",
+                                               5: "engine_idling",
+                                               6: "gun_shot",
+                                               7: "jackhammer",
+                                               8: "siren",
+                                               9: "street_music"
+                                               }
+                                }
+                }
+
 
 TARGET_SAMPLE_RATE = 22050
 SAMPLE_SIZE = 22050
@@ -149,7 +163,7 @@ def prepare_inputdata(dataset_name: str,
     return X_trans, y
     
 
-# TODO: scale
+# TODO: scaler
 
 class CustomDataset(Dataset):
     """Custom dataset loader"""
