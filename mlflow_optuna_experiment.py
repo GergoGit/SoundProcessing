@@ -33,7 +33,7 @@ import model_params as mpar
 
 model_list = ['Conv2D', 'RNN']
 DATASET = "UrbanSound"
-MODEL_TYPE = 'RNN'
+MODEL_TYPE = 'Conv2D'
 # TRACKING_URI = 'http://127.0.0.1:5000'
 
 
@@ -59,7 +59,7 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
          model_params = mpar.get_model_params(trial, model_type)
          
          BATCH_SIZE = 64 #trial.suggest_categorical("batch_size", [16, 32, 64])
-         N_EPOCH = 3
+         N_EPOCH = 20
         
          train_dataloader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
          val_dataloader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=True)
@@ -100,8 +100,12 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
            
                 train_loss_batches = []
                 val_loss_batches = []
+                train_accuracy_batches = []
+                val_accuracy_batches = []
                 
                 # Training
+                train_size = len(train_dataloader.dataset)
+                train_correct = 0
                 model = model.train()
                 for i, (input_sample, target) in enumerate(train_dataloader):
                     # input_sample, target = next(iter(train_dataloader))
@@ -111,30 +115,40 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
                     loss = loss_fn(pred, target)
                     loss.backward()
                     optimizer.step()
-                    train_loss_batches.append(loss.item())
+                    train_loss_batches.append(loss.item())                    
+                    train_correct += (pred.argmax(1)==target).type(torch.float).sum().item()
                                 
-               # Validation
+                # Validation
+                val_size = len(val_dataloader.dataset)
+                val_correct = 0
                 model = model.eval()
                 with torch.no_grad():
                     for i, (input_sample, target) in enumerate(val_dataloader):
                         input_sample, target = input_sample.to(device), target.to(device)
                         pred = model(input_sample)
                         loss = loss_fn(pred, target)
-                        val_loss_batches.append(loss.item())
+                        val_loss_batches.append(loss.item())                        
+                        val_correct += (pred.argmax(1)==target).type(torch.float).sum().item()
                 
                 train_loss_epoch = np.mean(train_loss_batches)
                 val_loss_epoch = np.mean(val_loss_batches)
                 loss_diff_epoch = np.abs(train_loss_epoch - val_loss_epoch)
+                train_acc_epoch = train_correct / train_size
+                val_acc_epoch = val_correct / val_size
                 
                 mlflow.log_params(trial.params)
                 mlflow.log_metric("train_loss", train_loss_epoch)
                 mlflow.log_metric('val_loss', val_loss_epoch)
+                mlflow.log_metric("train_acc", train_acc_epoch)
+                mlflow.log_metric('val_acc', val_acc_epoch)
                 
                 history['train'].append(train_loss_epoch)
                 history['val'].append(val_loss_epoch)
                 history['loss_diff'].append(loss_diff_epoch)
             
-                print(f'Epoch {epoch}: train loss {train_loss_epoch} val loss {val_loss_epoch}')
+                print(f'Epoch {epoch}: \n\
+                      train loss {train_loss_epoch} \nval loss {val_loss_epoch} \n\
+                      train accuracy {train_acc_epoch} \nval accuracy {val_acc_epoch}')
                 
                 early_stopping(val_loss_epoch, model)
                 if early_stopping.meet_criterion:
