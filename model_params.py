@@ -2,7 +2,7 @@
 # os.chdir(r'C:\Users\bonnyaigergo\Documents\GitHub\SoundProcessing')
 
 from math import floor
-from models import NetConv2D
+from models import NetConv2D, ClassifierRNN
 import optuna
 
 def get_model_params(trial: optuna.Trial, model_type: str):
@@ -26,6 +26,19 @@ def get_model_params(trial: optuna.Trial, model_type: str):
        'pool2_padding': 0
        }
          
+    rnn_arch_params = {
+        'cell_type': 'GRU', # trial.suggest_categorical("enc_multi_block", ['GRU', 'LSTM']),
+        'multi_block': False,
+        'layer1_hidden_size': 32,
+        'layer1_n_layers': 5,
+        'layer1_bidirectional': False,
+        'layer1_dropout_rate': 0.2,
+        'layer2_hidden_size': 16,
+        'layer2_n_layers': 2,
+        'layer2_bidirectional': False,
+        'layer2_dropout_rate': 0.2,
+        'before_fc_dropout': 0.4
+        }
     
     optim_params = {
         'learning_rate': trial.suggest_loguniform(name='learning_rate', low=1e-5, high=1e-1),
@@ -38,7 +51,11 @@ def get_model_params(trial: optuna.Trial, model_type: str):
         'Conv2D': {'classifier': NetConv2D,
                    'arch_params': conv2d_arch_params,
                    # 'optimization': optim_params
-                   }
+                   },
+        'RNN': {'classifier': ClassifierRNN,
+                'arch_params': rnn_arch_params,
+                # 'optimization': optim_params
+                }
         }
     
     return model_params_dict[model_type]

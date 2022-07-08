@@ -37,11 +37,11 @@ class NetConv2D(nn.Module):
                                             stride=params['conv1_stride'], 
                                             padding=params['conv1_padding']),
                                    nn.BatchNorm2d(params['conv1_ch_out']),
-                                   nn.ReLU(),
-                                   nn.Dropout(0.2),
+                                   nn.ReLU(),                                   
                                    nn.MaxPool2d(kernel_size=params['pool1_kernel_size'], 
                                                 stride=params['pool1_stride'], 
-                                                padding=params['pool1_padding'])
+                                                padding=params['pool1_padding']),
+                                   nn.Dropout(0.2)
                                    )
         if self.multi_block:
             self.conv2 = nn.Sequential(nn.Conv2d(in_channels=params['conv1_ch_out'], 
@@ -51,11 +51,11 @@ class NetConv2D(nn.Module):
                                                 padding=params['conv2_padding']),
                                        nn.BatchNorm2d(params['conv2_ch_out']),
                                        nn.ReLU(),
-                                       nn.Dropout(0.2),
                                        nn.MaxPool2d(kernel_size=params['pool2_kernel_size'], 
                                          stride=params['pool2_stride'], 
-                                         padding=params['pool2_padding'])
-            )
+                                         padding=params['pool2_padding']),
+                                       nn.Dropout(0.2)
+                                       )
         self.flatten = nn.Flatten()
         self.fc = nn.Linear(self.conv_block_output_size, self.n_classes)
         self.dropout = nn.Dropout(0.2)
@@ -144,11 +144,11 @@ class NetConv2D_v2(nn.Module):
 # seq_true, target = next(iter(train_dataloader))
 # seq_true.shape
 
-# net = NetConv2D(n_timesteps=seq_true.shape[2],
+# net = ClassifierRNN(n_timesteps=seq_true.shape[2],
 #                 n_freq=seq_true.shape[3],
 #                 n_classes=10, 
 #                 batch_size=64,
-#                 params=model_params['arch_params'])
+#                 params=model_params)
 
 
 # net.forward(seq_true)
@@ -159,72 +159,105 @@ class NetConv2D_v2(nn.Module):
 # calc_conv_or_pool_output_size(input_size=30, kernel_size=5, stride=1, padding=0)
 # calc_conv_or_pool_output_size(input_size=26, kernel_size=2, stride=2, padding=0)
 
-class CNNNetwork(nn.Module):
-
-    def __init__(self, n_classes: int):
+class ClassifierRNN(nn.Module):
+    def __init__(self, 
+                 n_timesteps: int, 
+                 n_freq: int, 
+                 n_classes: int, 
+                 batch_size: int,
+                 params: dict):
         super().__init__()
-        # 4 conv blocks / flatten / linear / softmax
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=1,
-                out_channels=16,
-                kernel_size=3,
-                stride=1,
-                padding=2
-            ),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=16,
-                out_channels=32,
-                kernel_size=3,
-                stride=1,
-                padding=2
-            ),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-        self.conv3 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=32,
-                out_channels=64,
-                kernel_size=3,
-                stride=1,
-                padding=2
-            ),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-        self.conv4 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=64,
-                out_channels=128,
-                kernel_size=3,
-                stride=1,
-                padding=2
-            ),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-        self.flatten = nn.Flatten()
-        self.linear = nn.Linear(128 * 5 * 4, n_classes)
+        self.n_timesteps = n_timesteps 
+        self.n_freq = n_freq
+        self.n_classes = n_classes
+        self.hidden_size1 = params['layer1_hidden_size']
+        self.hidden_size2 = params['layer2_hidden_size']
+        self.batch_size = batch_size
+        self.cell_type = params['cell_type']
+        self.multi_block = params['multi_block']
+        self.layer1_bidirectional = params['layer1_bidirectional']
+        self.layer2_bidirectional = params['layer2_bidirectional']
+        self.params = params
+        
+        if self.cell_type == "LSTM":
+            self.lstm1 = nn.LSTM(
+                input_size=n_freq,
+                hidden_size=self.hidden_size1,
+                num_layers=params['layer1_n_layers'],
+                batch_first=True,
+                bidirectional=params['layer1_bidirectional'],
+                dropout=params['layer1_dropout_rate']
+            )
+            if self.multi_block:
+                self.lstm2 = nn.LSTM(
+                    input_size=self.hidden_size1 * (2 if self.layer1_bidirectional else 1),
+                    hidden_size=hidden_size2,
+                    num_layers=params['layer2_n_layers'],
+                    batch_first=True,
+                    bidirectional=params['layer2_bidirectional'],
+                    dropout=params['layer2_dropout_rate']
+                )
+        elif self.cell_type == "GRU":
+            self.gru1 = nn.GRU(
+                input_size=n_freq,
+                hidden_size=self.hidden_size1,
+                num_layers=params['layer1_n_layers'],
+                batch_first=True,
+                bidirectional=params['layer1_bidirectional'],
+                dropout=params['layer1_dropout_rate']
+            )
+            if self.multi_block:
+                self.gru2 = nn.GRU(
+                    input_size=self.hidden_size1 * (2 if self.layer1_bidirectional else 1),
+                    hidden_size=hidden_size2,
+                    num_layers=params['layer2_n_layers'],
+                    batch_first=True,
+                    bidirectional=params['layer2_bidirectional'],
+                    dropout=params['layer2_dropout_rate']
+                )            
+        else:
+            raise NotImplementedError    
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=params['before_fc_dropout'])
+        if self.multi_block:
+            self.fc = nn.Linear(self.hidden_size2 * (2 if self.layer2_bidirectional else 1), 
+                                n_classes)
+        else:
+            self.fc = nn.Linear(self.hidden_size1 * (2 if self.layer1_bidirectional else 1), 
+                                n_classes)
+        # self.flatten = nn.Flatten()
+        # self.dropout = nn.Dropout(0.2)
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, input_data):
-        x = self.conv1(input_data)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.flatten(x)
-        logits = self.linear(x)
-        predictions = self.softmax(logits)
-        return predictions
+    def forward(self, x):
+        # x = x.reshape((self.batch_size, self.n_timesteps, self.n_freq))
+        x = torch.squeeze(x)
+        # print(f"reshape out {x.shape}")
+        if self.cell_type == "LSTM":
+            x, (hidden, cell_1) = self.lstm1(x)
+        elif self.cell_type == "GRU":
+            x, hidden = self.gru1(x)
+        # print(f"layer1 out {x.shape}")   
+        if self.multi_block:
+            if self.cell_type == "LSTM":
+                x, (hidden, _) = self.lstm2(x)
+            elif self.cell_type == "GRU":
+                x, hidden = self.gru2(x)     
+            # print(f"layer2 out {x.shape}")      
+        if (self.layer1_bidirectional and self.multi_block==False) or self.multi_block and self.layer1_bidirectional:
+            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
+        else:
+            hidden = hidden[-1, :, :]
+        # print(f"hidden out {hidden.shape}")   
+        hidden = self.relu(self.dropout(hidden))
+        x = self.fc(hidden)
+        # print(f"fc out {x.shape}")   
+        return self.softmax(x)
+
+
+
+
+
 
 class Net(nn.Module):
     def __init__(self, n_classes):

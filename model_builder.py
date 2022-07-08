@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 def build_classifier_model(n_timesteps: int, 
                             n_freq: int,  

@@ -22,7 +22,7 @@ from mlflow import pytorch
 import os
 # os.chdir(r'C:\Users\bonnyaigergo\Documents\GitHub\SoundProcessing')
 
-from datasets import prepare_inputdata, CustomDataset
+from datasets import prepare_inputdata, CustomDataset, mfcc_transform
 from utils import plot_loss, embedding_histogram, EarlyStopping
 import utils
 from model_builder import build_classifier_model
@@ -33,7 +33,7 @@ import model_params as mpar
 
 model_list = ['Conv2D', 'RNN']
 DATASET = "UrbanSound"
-MODEL_TYPE = 'Conv2D'
+MODEL_TYPE = 'RNN'
 # TRACKING_URI = 'http://127.0.0.1:5000'
 
 
@@ -70,6 +70,9 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
          n_freq = X.shape[3]
          n_classes = 10
          
+         # model_params = {'classifier': ClassifierRNN,
+         #                'arch_params': rnn_arch_params}
+         
          model = build_classifier_model(n_timesteps, 
                                         n_freq,  
                                         n_classes,
@@ -101,6 +104,7 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
                 # Training
                 model = model.train()
                 for i, (input_sample, target) in enumerate(train_dataloader):
+                    # input_sample, target = next(iter(train_dataloader))
                     optimizer.zero_grad()
                     input_sample, target = input_sample.to(device), target.to(device)
                     pred = model(input_sample)
