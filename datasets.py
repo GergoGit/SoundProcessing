@@ -35,6 +35,8 @@ import torchaudio.transforms as T
 import numpy as np
 import pandas as pd
 from typing import Callable
+from enum import Enum
+from tqdm import tqdm
 import os
 # os.chdir(r'C:\Users\bonnyaigergo\Documents\GitHub\SoundProcessing')
 
@@ -89,23 +91,28 @@ dataset_dict = {'UrbanSound': {'n_observations': 8_730,
                                     }
                 }
 
+class TransfType(Enum):
+    MEL = "MEL"
+    MFCC = "MFCC"
+    LFCC = "LFCC"
+    
 
-TARGET_SAMPLE_RATE = 22050
-SAMPLE_SIZE = 22050
-SAMPLE_RATE = 22050
-N_FFT = 1024
-WIN_LENGTH = None
-HOP_LENGTH = 512
-N_MELS = 128
-N_MFCC = 128
-N_LFCC = 128
+# TARGET_SAMPLE_RATE = 22050
+# SAMPLE_SIZE = 22050
+# SAMPLE_RATE = 22050
+# N_FFT = 1024
+# WIN_LENGTH = None
+# HOP_LENGTH = 512
+# N_MELS = 128
+# N_MFCC = 128
+# N_LFCC = 128
 
 ######################################
 # Preprocess and Save Audio Data
 ######################################
 
-def preprocess_and_save_speechcommands_dataset(target_sample_rate: int=16000,
-                                               sample_size: int=16000
+def preprocess_and_save_speechcommands_dataset(target_sample_rate: int=cfg.SpeechCommands.TARGET_SAMPLE_RATE,
+                                               sample_size: int=cfg.SpeechCommands.SAMPLE_SIZE
                                                ) -> None:
 
     import glob
@@ -114,9 +121,9 @@ def preprocess_and_save_speechcommands_dataset(target_sample_rate: int=16000,
     labels = []
     signals = []
         
-    for i in range(len(item_list)):
+    for i in tqdm(range(len(item_list))):
         
-        file_path_list = glob.glob("D:\Thesis\Data Sets\Audio\SpeechCommands\audio"+"\\"+item_list[i]+"\*.wav")
+        file_path_list = glob.glob("D:\Thesis\Data Sets\Audio\SpeechCommands\Audio"+"\\"+item_list[i]+"\*.wav")
         
         for file_path in file_path_list:
             signal, sr = torchaudio.load(file_path)
@@ -136,10 +143,10 @@ def preprocess_and_save_speechcommands_dataset(target_sample_rate: int=16000,
     torch.save(signals, r"D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data\signals.pt")
     torch.save(labels, r"D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data\labels.pt")
     
-    
 
-def preprocess_and_save_audiomnist_dataset(target_sample_rate: int=TARGET_SAMPLE_RATE,
-                                           sample_size: int=SAMPLE_SIZE
+
+def preprocess_and_save_audiomnist_dataset(target_sample_rate: int=cfg.AudioMNIST.TARGET_SAMPLE_RATE,
+                                           sample_size: int=cfg.AudioMNIST.SAMPLE_SIZE
                                            ) -> None:
 
     import glob
@@ -148,7 +155,7 @@ def preprocess_and_save_audiomnist_dataset(target_sample_rate: int=TARGET_SAMPLE
     labels = []
     signals = []
     
-    for file_path in file_path_list:
+    for file_path in tqdm(file_path_list):
         signal, sr = torchaudio.load(file_path)
         signal = resample_if_necessary(signal, sr, target_sample_rate)
         signal = stereo_to_mono_if_necessary(signal)
@@ -169,8 +176,8 @@ def preprocess_and_save_audiomnist_dataset(target_sample_rate: int=TARGET_SAMPLE
 
 
 
-def preprocess_and_save_urbansound_dataset(target_sample_rate: int=TARGET_SAMPLE_RATE,
-                                           sample_size: int=SAMPLE_SIZE
+def preprocess_and_save_urbansound_dataset(target_sample_rate: int=cfg.UrbanSound.TARGET_SAMPLE_RATE,
+                                           sample_size: int=cfg.UrbanSound.SAMPLE_SIZE
                                            ) -> None:
     
     """
@@ -192,7 +199,7 @@ def preprocess_and_save_urbansound_dataset(target_sample_rate: int=TARGET_SAMPLE
     labels = []
     signals = []
     
-    for i in range(len(metadata_good)):
+    for i in tqdm(range(len(metadata_good))):
         fold = f"fold{metadata_good.iloc[i, 5]}"
         path = os.path.join(AUDIO_DIR, fold, metadata_good.iloc[i, 0])
         signal, sr = torchaudio.load(path)
@@ -216,79 +223,112 @@ def preprocess_and_save_urbansound_dataset(target_sample_rate: int=TARGET_SAMPLE
 # Audio Data Transformation
 ######################################
 
-mel_spectrogram = T.MelSpectrogram(
-    sample_rate=SAMPLE_RATE,
-    n_fft=N_FFT,
-    hop_length=HOP_LENGTH,
-    n_mels=N_MELS
-    )
+# mel_spectrogram = T.MelSpectrogram(
+#     sample_rate=SAMPLE_RATE,
+#     n_fft=N_FFT,
+#     hop_length=HOP_LENGTH,
+#     n_mels=N_MELS
+#     )
 
 
-mfcc_transform = T.MFCC(
-    sample_rate=SAMPLE_RATE,
-    n_mfcc=N_MFCC,
-    melkwargs={
-        "n_fft": N_FFT,
-        "n_mels": N_MELS,
-        "hop_length": HOP_LENGTH,
-        "mel_scale": "htk",
-    },
-)
+# mfcc_transform = T.MFCC(
+#     sample_rate=SAMPLE_RATE,
+#     n_mfcc=N_MFCC,
+#     melkwargs={
+#         "n_fft": N_FFT,
+#         "n_mels": N_MELS,
+#         "hop_length": HOP_LENGTH,
+#         "mel_scale": "htk",
+#     },
+# )
 
-lfcc_transform = T.LFCC(
-    sample_rate=SAMPLE_RATE,
-    n_lfcc=N_LFCC,
-    speckwargs={
-        "n_fft": N_FFT,
-        "win_length": WIN_LENGTH,
-        "hop_length": HOP_LENGTH,
-    },
-)
+# lfcc_transform = T.LFCC(
+#     sample_rate=SAMPLE_RATE,
+#     n_lfcc=N_LFCC,
+#     speckwargs={
+#         "n_fft": N_FFT,
+#         "win_length": WIN_LENGTH,
+#         "hop_length": HOP_LENGTH,
+#     },
+# )
 
 
 ######################################
 # Prepare Audio Input Data
 ######################################
 
-def prepare_inputdata(dataset_name: str,
-                      transformation: Callable):
+# def prepare_inputdata(dataset_name: str,
+#                       transformation: Callable):
     
-    if dataset_name == "UrbanSound":
-        X = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\signals.pt")
-        y = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\labels.pt")
+#     if dataset_name == "UrbanSound":
+#         X = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\signals.pt")
+#         y = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\labels.pt")
         
-        X_trans = []
+#         X_trans = []
 
-        for i in range(len(X)):
-            transformed_signal = transformation(X[i])
-            X_trans.append(transformed_signal)
+#         for i in range(len(X)):
+#             transformed_signal = transformation(X[i])
+#             X_trans.append(transformed_signal)
             
-        X_trans = torch.stack(X_trans, dim=0)
+#         X_trans = torch.stack(X_trans, dim=0)
                 
-    return X_trans, y
-    
+#     return X_trans, y
+
+
 def prepare_inputdata(dataset_name: str,
-                      transform_type: str):
+                      transform_type: TransfType):
     
-    if transform_type == 'MEL':
+    if transform_type == TransfType.MEL:
         transformation = T.MelSpectrogram(
                             sample_rate=cfg[dataset_name].SAMPLE_RATE,
-                            n_fft=N_FFT,
-                            hop_length=HOP_LENGTH,
-                            n_mels=N_MELS
+                            n_fft=cfg[dataset_name].N_FFT,
+                            hop_length=cfg[dataset_name].HOP_LENGTH,
+                            n_mels=cfg[dataset_name].N_MELS
                             )
+    
+    if transform_type == TransfType.MFCC:
+        transformation = T.MFCC(
+                            sample_rate=cfg[dataset_name].SAMPLE_RATE,
+                            n_mfcc=cfg[dataset_name].N_MFCC,
+                            melkwargs={
+                                "n_fft": cfg[dataset_name].N_FFT,
+                                "n_mels": cfg[dataset_name].N_MELS,
+                                "hop_length": cfg[dataset_name].HOP_LENGTH,
+                                "mel_scale": "htk"
+                                }
+                            )
+    
+    if transform_type == TransfType.LFCC:
+        transformation = T.LFCC(
+                            sample_rate=cfg[dataset_name].SAMPLE_RATE,
+                            n_lfcc=cfg[dataset_name].N_LFCC,
+                            speckwargs={
+                                "n_fft": cfg[dataset_name].N_FFT,
+                                "win_length": cfg[dataset_name].WIN_LENGTH,
+                                "hop_length": cfg[dataset_name].HOP_LENGTH
+                                }
+                            )
+    
     
     if dataset_name == "UrbanSound":
         X = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\signals.pt")
         y = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\labels.pt")
         
-        X_trans = []
+    if dataset_name == "SpeechCommands":
+        X = torch.load(r"D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data\signals.pt")
+        y = torch.load(r"D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data\labels.pt")
+        
+    if dataset_name == "AudioMNIST":
+        X = torch.load(r"D:\Thesis\Data Sets\Audio\AudioMNIST\preprocessed_data\signals.pt")
+        y = torch.load(r"D:\Thesis\Data Sets\Audio\AudioMNIST\preprocessed_data\labels.pt")
+        
+    X_trans = []
 
-        for i in range(len(X)):
-            transformed_signal = transformation(X[i])
-            X_trans.append(transformed_signal)
-            
-        X_trans = torch.stack(X_trans, dim=0)
+    for i in tqdm(range(len(X))):
+        transformed_signal = transformation(X[i])
+        X_trans.append(transformed_signal)
+        
+    X_trans = torch.stack(X_trans, dim=0)
                 
     return X_trans, y
 
@@ -311,7 +351,22 @@ class CustomDataset(Dataset):
 
 if __name__ == "__main__":
     
-    X, y = prepare_inputdata(dataset_name="UrbanSound", transformation=mfcc_transform)
+    # preprocess_and_save_speechcommands_dataset(target_sample_rate=cfg.SpeechCommands.TARGET_SAMPLE_RATE,
+    #                                             sample_size=cfg.SpeechCommands.SAMPLE_SIZE
+    #                                             )
+    
+    # preprocess_and_save_audiomnist_dataset(target_sample_rate=cfg.AudioMNIST.TARGET_SAMPLE_RATE,
+    #                                        sample_size=cfg.AudioMNIST.SAMPLE_SIZE
+    #                                        )
+    
+    # preprocess_and_save_urbansound_dataset(target_sample_rate=cfg.UrbanSound.TARGET_SAMPLE_RATE,
+    #                                        sample_size=cfg.UrbanSound.SAMPLE_SIZE
+    #                                        )
+    
+    
+    DATASET = 'AudioMNIST' # "SpeechCommands" # "UrbanSound"
+    
+    X, y = prepare_inputdata(dataset_name=DATASET, transform_type=TransfType.MFCC)
     
     from sklearn.model_selection import train_test_split
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=123)
@@ -323,3 +378,7 @@ if __name__ == "__main__":
     
     train_dataloader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=True)
+    
+    input_sound, label = next(iter(train_dataloader))
+    
+    d = torch.squeeze(input_sound[1])
