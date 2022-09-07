@@ -1,0 +1,4 @@
+artifact_location: file:///C:/Users/bonnyaigergo/Documents/GitHub/SoundProcessing/mlruns/0
+experiment_id: '0'
+lifecycle_stage: active
+name: UrbanSound_RNN_exp

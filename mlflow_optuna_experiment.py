@@ -33,7 +33,7 @@ import model_params as mpar
 
 model_list = ['Conv2D', 'RNN']
 DATASET = "UrbanSound"
-MODEL_TYPE = 'Conv2D'
+MODEL_TYPE = 'RNN'
 # TRACKING_URI = 'http://127.0.0.1:5000'
 
 
@@ -88,7 +88,7 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
                             step_size=15, #kwargs['scheduler_step_size']
                             gamma=0.1)
          loss_fn = nn.NLLLoss().to(device)
-         # loss_fn = nn.CrossEntropyLoss()
+         # loss_fn = nn.CrossEntropyLoss().to(device)
          
          checkpoint_path='runs/'+model_type+'model'+str(trial.number)+'.pt'
          
@@ -171,7 +171,7 @@ def objective(trial: optuna.Trial, dataset: str=DATASET, model_type: str=MODEL_T
  
 if __name__ == "__main__":
         
-    N_TRIALS = 1
+    N_TRIALS = 3
         
     study = optuna.create_study(direction="minimize", 
                                 sampler=optuna.samplers.TPESampler(), 

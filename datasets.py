@@ -1,4 +1,12 @@
 """
+datasets:
+https://github.com/Jakobovski/free-spoken-digit-dataset
+https://github.com/soerenab/AudioMNIST
+https://github.com/jayrodge/AudioMNIST-using-PyTorch
+https://ai.googleblog.com/2017/08/launching-speech-commands-dataset.html
+https://github.com/karolpiczak/ESC-50
+
+
 tried to load arff file without success:
 https://folk.ntnu.no/staal/assets/sw/mit/arff/
 https://discuss.analyticsvidhya.com/t/loading-arff-type-files-in-python/27419
@@ -31,6 +39,8 @@ import os
 # os.chdir(r'C:\Users\bonnyaigergo\Documents\GitHub\SoundProcessing')
 
 from audio_preprocessing import resample_if_necessary, stereo_to_mono_if_necessary, cut_if_necessary, right_pad_if_necessary
+from config import audio_transf_params_dict as cfg
+
 
 dataset_dict = {'UrbanSound': {'n_observations': 8_730,
                                 'n_classes': 10,
@@ -46,7 +56,37 @@ dataset_dict = {'UrbanSound': {'n_observations': 8_730,
                                                8: "siren",
                                                9: "street_music"
                                                }
-                                }
+                                },
+                'SpeechCommands': {'n_observations': 8_730,
+                                    'n_classes': 10,
+                                    'loc': r'D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data',
+                                    'class_dict': {0: "air_conditioner",
+                                                   1: "car_horn",
+                                                   2: "children_playing",
+                                                   3: "dog_bark",
+                                                   4: "drilling",
+                                                   5: "engine_idling",
+                                                   6: "gun_shot",
+                                                   7: "jackhammer",
+                                                   8: "siren",
+                                                   9: "street_music"
+                                                   }
+                                    },
+                'AudioMNIST':       {'n_observations': 8_730,
+                                    'n_classes': 10,
+                                    'loc': r'D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data',
+                                    'class_dict': {0: "air_conditioner",
+                                                   1: "car_horn",
+                                                   2: "children_playing",
+                                                   3: "dog_bark",
+                                                   4: "drilling",
+                                                   5: "engine_idling",
+                                                   6: "gun_shot",
+                                                   7: "jackhammer",
+                                                   8: "siren",
+                                                   9: "street_music"
+                                                   }
+                                    }
                 }
 
 
@@ -63,6 +103,71 @@ N_LFCC = 128
 ######################################
 # Preprocess and Save Audio Data
 ######################################
+
+def preprocess_and_save_speechcommands_dataset(target_sample_rate: int=16000,
+                                               sample_size: int=16000
+                                               ) -> None:
+
+    import glob
+    item_list = ['on','off','up','down','right','left','stop','go','backward','forward','no','yes']
+    
+    labels = []
+    signals = []
+        
+    for i in range(len(item_list)):
+        
+        file_path_list = glob.glob("D:\Thesis\Data Sets\Audio\SpeechCommands\audio"+"\\"+item_list[i]+"\*.wav")
+        
+        for file_path in file_path_list:
+            signal, sr = torchaudio.load(file_path)
+            signal = resample_if_necessary(signal, sr, target_sample_rate)
+            signal = stereo_to_mono_if_necessary(signal)
+            signal = cut_if_necessary(signal, sample_size)
+            signal = right_pad_if_necessary(signal, sample_size)
+            
+            label = int(i)
+            
+            signals.append(signal)
+            labels.append(label)
+      
+    signals = torch.stack(signals, dim=0)
+    labels = torch.LongTensor(labels)
+    
+    torch.save(signals, r"D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data\signals.pt")
+    torch.save(labels, r"D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data\labels.pt")
+    
+    
+
+def preprocess_and_save_audiomnist_dataset(target_sample_rate: int=TARGET_SAMPLE_RATE,
+                                           sample_size: int=SAMPLE_SIZE
+                                           ) -> None:
+
+    import glob
+    file_path_list = glob.glob(r"D:\Thesis\Data Sets\Audio\AudioMNIST\audio\*\*.wav")
+    
+    labels = []
+    signals = []
+    
+    for file_path in file_path_list:
+        signal, sr = torchaudio.load(file_path)
+        signal = resample_if_necessary(signal, sr, target_sample_rate)
+        signal = stereo_to_mono_if_necessary(signal)
+        signal = cut_if_necessary(signal, sample_size)
+        signal = right_pad_if_necessary(signal, sample_size)
+        
+        label = int(file_path.split("\\")[-1][0])
+        
+        signals.append(signal)
+        labels.append(label)
+        
+    signals = torch.stack(signals, dim=0)
+    labels = torch.LongTensor(labels)
+    
+    torch.save(signals, r"D:\Thesis\Data Sets\Audio\AudioMNIST\preprocessed_data\signals.pt")
+    torch.save(labels, r"D:\Thesis\Data Sets\Audio\AudioMNIST\preprocessed_data\labels.pt")
+
+
+
 
 def preprocess_and_save_urbansound_dataset(target_sample_rate: int=TARGET_SAMPLE_RATE,
                                            sample_size: int=SAMPLE_SIZE
@@ -162,6 +267,31 @@ def prepare_inputdata(dataset_name: str,
                 
     return X_trans, y
     
+def prepare_inputdata(dataset_name: str,
+                      transform_type: str):
+    
+    if transform_type == 'MEL':
+        transformation = T.MelSpectrogram(
+                            sample_rate=cfg[dataset_name].SAMPLE_RATE,
+                            n_fft=N_FFT,
+                            hop_length=HOP_LENGTH,
+                            n_mels=N_MELS
+                            )
+    
+    if dataset_name == "UrbanSound":
+        X = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\signals.pt")
+        y = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\labels.pt")
+        
+        X_trans = []
+
+        for i in range(len(X)):
+            transformed_signal = transformation(X[i])
+            X_trans.append(transformed_signal)
+            
+        X_trans = torch.stack(X_trans, dim=0)
+                
+    return X_trans, y
+
 
 # TODO: scaler
 
