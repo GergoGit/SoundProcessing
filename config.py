@@ -1,5 +1,5 @@
 """
-Parameter dictionaries for pretraining
+Parameter dictionaries for data preprocessing and model pretraining
 
 """
 

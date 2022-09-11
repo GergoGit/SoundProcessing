@@ -121,10 +121,24 @@ class EarlyStopping():
                     print('Early stopping')
                 self.meet_criterion = True
                 
-                
-def calc_conv_or_pool_output_size(input_size: int, kernel_size: int, stride: int, padding: int):
-    output_size = floor((input_size + 2*padding - kernel_size)/stride) + 1
+     
+#####################################
+# Conv1d and 2d output calculation
+#####################################
+
+def calc_conv1d_or_pool1d_output_size(input_size: int, kernel_size: int, stride: int, padding: int, dilation: int=1):
+    output_size = floor((input_size + 2*padding - dilation*(kernel_size-1) - 1)/stride) + 1
     return output_size
+
+def calc_conv2d_or_maxpool2d_output_size(input_size: tuple, kernel_size: tuple, stride: tuple=(1,1), padding: tuple=(0,0), dilation: tuple=(1,1)):
+    width_output_size = floor((input_size[0] + 2*padding[0] - dilation[0]*(kernel_size[0]-1) - 1)/stride[0]) + 1
+    hight_output_size = floor((input_size[1] + 2*padding[1] - dilation[1]*(kernel_size[1]-1) - 1)/stride[1]) + 1
+    return width_output_size, hight_output_size
+
+def calc_avgpool2d_output_size(input_size: tuple, kernel_size: tuple, stride: tuple=(1,1), padding: tuple=(0,0)):
+    width_output_size = floor((input_size[0] + 2*padding[0] - kernel_size[0])/stride[0]) + 1
+    hight_output_size = floor((input_size[1] + 2*padding[1] - kernel_size[1])/stride[1]) + 1
+    return width_output_size, hight_output_size
 
 def calculate_conv1d_block_output_size(input_size: int, params: dict):
     """
@@ -146,12 +160,12 @@ def calculate_conv1d_block_output_size(input_size: int, params: dict):
 
     """
     
-    conv1_output_size = calc_conv_or_pool_output_size(input_size=input_size, 
+    conv1_output_size = calc_conv1d_or_pool1d_output_size(input_size=input_size, 
                                                         kernel_size=params['conv1_kernel_size'], 
                                                         stride=params['conv1_stride'], 
                                                         padding=params['conv1_padding'])
     
-    pool1_output_size = calc_conv_or_pool_output_size(input_size=conv1_output_size, 
+    pool1_output_size = calc_conv1d_or_pool1d_output_size(input_size=conv1_output_size, 
                                                         kernel_size=params['pool1_kernel_size'], 
                                                         stride=params['pool1_stride'], 
                                                         padding=params['pool1_padding'])
@@ -159,12 +173,12 @@ def calculate_conv1d_block_output_size(input_size: int, params: dict):
     if params['multi_block'] == False:
         flat_size = pool1_output_size * params['conv1_ch_out']
     else:
-        conv2_output_size = calc_conv_or_pool_output_size(input_size=pool1_output_size, 
+        conv2_output_size = calc_conv1d_or_pool1d_output_size(input_size=pool1_output_size, 
                                                             kernel_size=params['conv2_kernel_size'], 
                                                             stride=params['conv2_stride'], 
                                                             padding=params['conv2_padding'])
         
-        pool2_output_size = calc_conv_or_pool_output_size(input_size=conv2_output_size, 
+        pool2_output_size = calc_conv1d_or_pool1d_output_size(input_size=conv2_output_size, 
                                                             kernel_size=params['pool2_kernel_size'], 
                                                             stride=params['pool2_stride'], 
                                                             padding=params['pool2_padding'])
@@ -192,22 +206,22 @@ def calculate_conv2d_block_output_size(x_size: int, y_size: int, params: dict):
 
     """
     
-    conv1_output_x_size = calc_conv_or_pool_output_size(input_size=x_size, 
+    conv1_output_x_size = calc_conv1d_or_pool1d_output_size(input_size=x_size, 
                                                         kernel_size=params['conv1_kernel_size'], 
                                                         stride=params['conv1_stride'], 
                                                         padding=params['conv1_padding'])
     
-    pool1_output_x_size = calc_conv_or_pool_output_size(input_size=conv1_output_x_size, 
+    pool1_output_x_size = calc_conv1d_or_pool1d_output_size(input_size=conv1_output_x_size, 
                                                         kernel_size=params['pool1_kernel_size'], 
                                                         stride=params['pool1_stride'], 
                                                         padding=params['pool1_padding'])
     
-    conv1_output_y_size = calc_conv_or_pool_output_size(input_size=y_size, 
+    conv1_output_y_size = calc_conv1d_or_pool1d_output_size(input_size=y_size, 
                                                         kernel_size=params['conv1_kernel_size'], 
                                                         stride=params['conv1_stride'], 
                                                         padding=params['conv1_padding'])
     
-    pool1_output_y_size = calc_conv_or_pool_output_size(input_size=conv1_output_y_size, 
+    pool1_output_y_size = calc_conv1d_or_pool1d_output_size(input_size=conv1_output_y_size, 
                                                         kernel_size=params['pool1_kernel_size'], 
                                                         stride=params['pool1_stride'], 
                                                         padding=params['pool1_padding'])
@@ -215,32 +229,95 @@ def calculate_conv2d_block_output_size(x_size: int, y_size: int, params: dict):
     if params['multi_block'] == False:
         flat_size = pool1_output_x_size * pool1_output_y_size * params['conv1_ch_out']
     else:
-        conv2_output_x_size = calc_conv_or_pool_output_size(input_size=pool1_output_x_size, 
+        conv2_output_x_size = calc_conv1d_or_pool1d_output_size(input_size=pool1_output_x_size, 
                                                             kernel_size=params['conv2_kernel_size'], 
                                                             stride=params['conv2_stride'], 
                                                             padding=params['conv2_padding'])
         
-        pool2_output_x_size = calc_conv_or_pool_output_size(input_size=conv2_output_x_size, 
+        pool2_output_x_size = calc_conv1d_or_pool1d_output_size(input_size=conv2_output_x_size, 
                                                             kernel_size=params['pool2_kernel_size'], 
                                                             stride=params['pool2_stride'], 
                                                             padding=params['pool2_padding'])
 
-        conv2_output_y_size = calc_conv_or_pool_output_size(input_size=pool1_output_y_size, 
+        conv2_output_y_size = calc_conv1d_or_pool1d_output_size(input_size=pool1_output_y_size, 
                                                             kernel_size=params['conv2_kernel_size'], 
                                                             stride=params['conv2_stride'], 
                                                             padding=params['conv2_padding'])
         
-        pool2_output_y_size = calc_conv_or_pool_output_size(input_size=conv2_output_y_size, 
+        pool2_output_y_size = calc_conv1d_or_pool1d_output_size(input_size=conv2_output_y_size, 
                                                             kernel_size=params['pool2_kernel_size'], 
                                                             stride=params['pool2_stride'], 
                                                             padding=params['pool2_padding'])
             
         flat_size = pool2_output_x_size * pool2_output_y_size * params['conv2_ch_out']
     return int(flat_size)
+
+def calc_conv2d_with_pool_block_output_size(input_size: tuple, params: dict):
+    
+    conv1_width_output_size, conv1_hight_output_size = calc_conv2d_or_maxpool2d_output_size(input_size=input_size, 
+                                                                                        kernel_size=params['conv1_kernel_size'], 
+                                                                                        stride=params['conv1_stride'], 
+                                                                                        padding=params['conv1_padding'],
+                                                                                        dilation=params['conv1_dilation']
+                                                                                        )
+    conv2_width_output_size, conv2_hight_output_size = calc_conv2d_or_maxpool2d_output_size(input_size=(conv1_width_output_size, conv1_hight_output_size), 
+                                                                                        kernel_size=params['conv2_kernel_size'], 
+                                                                                        stride=params['conv2_stride'], 
+                                                                                        padding=params['conv2_padding'],
+                                                                                        dilation=params['conv2_dilation']
+                                                                                        )
+    if params['enc_maxpool']:
+        pool1_width_output_size, pool1_hight_output_size = calc_conv2d_or_maxpool2d_output_size(input_size=(conv2_width_output_size, conv2_hight_output_size), 
+                                                                                            kernel_size=params['pool1_kernel_size'], 
+                                                                                            stride=params['pool1_stride'],
+                                                                                            padding=params['pool1_padding']
+                                                                                            )
+    else:
+        pool1_width_output_size, pool1_hight_output_size = calc_avgpool2d_output_size(input_size=(conv2_width_output_size, conv2_hight_output_size), 
+                                                                                      kernel_size=params['pool1_kernel_size'], 
+                                                                                      stride=params['pool1_stride'],
+                                                                                      padding=params['pool1_padding']
+                                                                                      )
+    
+    flat_size = pool1_width_output_size * pool1_hight_output_size * params['conv2_ch_out']
+    return int(flat_size)      
+
+def calc_conv2d_block_output_size(input_size: tuple, params: dict):
+    
+    conv1_width_output_size, conv1_hight_output_size = calc_conv2d_or_maxpool2d_output_size(input_size=input_size, 
+                                                                                        kernel_size=params['conv1_kernel_size'], 
+                                                                                        stride=params['conv1_stride'], 
+                                                                                        padding=params['conv1_padding'],
+                                                                                        dilation=params['conv1_dilation']
+                                                                                        )
+    conv2_width_output_size, conv2_hight_output_size = calc_conv2d_or_maxpool2d_output_size(input_size=(conv1_width_output_size, conv1_hight_output_size), 
+                                                                                        kernel_size=params['conv2_kernel_size'], 
+                                                                                        stride=params['conv2_stride'], 
+                                                                                        padding=params['conv2_padding'],
+                                                                                        dilation=params['conv2_dilation']
+                                                                                        )
+    conv3_width_output_size, conv3_hight_output_size = calc_conv2d_or_maxpool2d_output_size(input_size=(conv2_width_output_size, conv2_hight_output_size), 
+                                                                                        kernel_size=params['conv3_kernel_size'], 
+                                                                                        stride=params['conv3_stride'], 
+                                                                                        padding=params['conv3_padding'],
+                                                                                        dilation=params['conv3_dilation']
+                                                                                        )
+    
+    flat_size = conv3_width_output_size * conv3_hight_output_size * params['conv3_ch_out']
+    return int(flat_size)      
+                                                                                  
+#####################################
+# ConvTranspose output calculation
+#####################################
     
 def calc_convtranspose1d_output_size(input_size: int, kernel_size: int, stride: int, padding: int, output_padding: int=0, dilation: int=1):
     output_size = (input_size-1)*stride-2*padding+dilation*(kernel_size-1)+output_padding+1
     return output_size
+
+def calc_convtranspose2d_output_size(input_size: tuple, kernel_size: tuple, stride: tuple=(1,1), padding: tuple=(0,0), output_padding: tuple=(0,0), dilation: tuple=(1,1)):
+    width_output_size = (input_size[0]-1)*stride[0]-2*padding[0]+dilation[0]*(kernel_size[0]-1)+output_padding[0]+1
+    hight_output_size = (input_size[1]-1)*stride[1]-2*padding[1]+dilation[1]*(kernel_size[1]-1)+output_padding[1]+1
+    return width_output_size, hight_output_size
 
 def calculate_convtranspose1d_block_output_size(input_size: int, **dec_arch_params: dict):
     
@@ -265,6 +342,9 @@ def calculate_convtranspose1d_block_output_size(input_size: int, **dec_arch_para
         flat_size = conv2_output_size * dec_arch_params['convtr2_ch_out']
         return int(flat_size)
 
+#####################################
+# TCN output calculation
+#####################################
 
 def calc_dilated_casual_conv1d_output_size(input_size: int, kernel_size: int, n_layer: int):
     max_dilation = 2**n_layer
@@ -277,7 +357,7 @@ def calculate_tcn_block_output_size(input_size: int, **params: dict):
                                                                     kernel_size=params['tcn1_kernel_size'], 
                                                                     n_layer=params['tcn1_n_layer'])
     
-    pool1_output_size = calc_conv_or_pool_output_size(input_size=tcn_block1_output_size, 
+    pool1_output_size = calc_conv1d_or_pool1d_output_size(input_size=tcn_block1_output_size, 
                                                         kernel_size=params['pool1_kernel_size'], 
                                                         stride=params['pool1_stride'], 
                                                         padding=params['pool1_padding'])

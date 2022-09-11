@@ -106,42 +106,19 @@ def get_encoder2_conv2d_arch_params(trial: optuna.Trial, dataset: str):
     
     return encoder2_conv2d_arch_params
 
+
+
+
+
     
-def get_decoder_convtr2d_arch_params(trial: optuna.Trial, dataset: str):
-    
-    decoder_convtr2d_arch_params = {        
-        'fc1_out': trial.suggest_int(name="fc1_out", # 128
-                                     low=arch_par[dataset].decoder_convtr2d.fc1_out.low, 
-                                     high=arch_par[dataset].decoder_convtr2d.fc1_out.high, 
-                                     step=arch_par[dataset].decoder_convtr2d.fc1_out.step
-                                     ),
-        
-        'width_in': 30,
-        'hight_in': 10,
-    
-        'convtr1_ch_in': trial.suggest_int(name="convtr1_ch_in", # 32
-                                     low=arch_par[dataset].decoder_convtr2d.convtr1_ch_in.low, 
-                                     high=arch_par[dataset].decoder_convtr2d.convtr1_ch_in.high, 
-                                     step=arch_par[dataset].decoder_convtr2d.convtr1_ch_in.step
-                                     ),
-        'convtr1_ch_out': trial.suggest_int(name="convtr1_ch_out", # 16
-                                     low=arch_par[dataset].decoder_convtr2d.convtr1_ch_out.low, 
-                                     high=arch_par[dataset].decoder_convtr2d.convtr1_ch_out.high, 
-                                     step=arch_par[dataset].decoder_convtr2d.convtr1_ch_out.step
-                                     ),
-        'convtr1_kernel_size': (5,4),
-        'convtr1_stride': (2,2),
-        'convtr1_padding': (0,0),
-        'convtr1_output_padding': (1,1),
-       
-        'convtr2_kernel_size': (4,2),
-        'convtr2_stride': (2,2),
-        'convtr2_padding': (1,1),
-        'convtr2_output_padding': (0,0),
-    
-        }
-    
-    return decoder_convtr2d_arch_params
+# encoder = Encoder2Conv2D(n_timesteps, 
+#                         n_features, 
+#                         embedding_size, 
+#                         batch_size,
+#                         enc_arch_params)
+# input_vector = torch.ones((batch_size, 1, n_timesteps, n_features))
+# encoder.forward(input_vector)
+
 
 
 class Encoder1Conv2D(nn.Module):
@@ -195,19 +172,42 @@ class Encoder1Conv2D(nn.Module):
         
     def forward(self, x):
         x = x.reshape((x.shape[0], 1, self.n_features, self.n_timesteps))
+        # x = self.encoder_cnn(x)
         x = self.c1(x)
+        # print(f"c1 output {x.shape}")
         x = self.relu(x)
         x = self.c2(x)
+        # print(f"c2 output {x.shape}")
         x = self.bn1(x)
+        # print(f"bn1 output {x.shape}")
         x = self.relu(x)
         x = self.c3(x)
+        # print(f"c3 output {x.shape}")
         x = self.relu(x)        
         x = self.flatten(x)
+        # print(f"flatten output {x.shape}")
+        # x = self.encoder_lin(x)
         x = self.fc1(x)
+        # print(f"fc1 output {x.shape}")
         x = self.relu(x)
-        x = self.fc2(x)      
+        x = self.fc2(x)
+        # print(f"fc2 output {x.shape}")        
         return x
     
+# encoder = EncoderConv2D(n_timesteps, 
+#                         n_features, 
+#                         embedding_size, 
+#                         batch_size)
+# input_vector = torch.ones((batch_size, 1, n_timesteps, n_features))
+# encoder.forward(input_vector)
+# x = input_vector.reshape((input_vector.shape[0], 1, n_features, n_timesteps))
+# x = c1(x)
+# x = c2(x)
+# x = bn1(x)
+# x = c3(x)
+# print(f"c3 output {x.shape}")
+# x = relu(x)        
+# x = flatten(x)
     
 class Encoder2Conv2D(nn.Module):
     
@@ -274,7 +274,28 @@ class Encoder2Conv2D(nn.Module):
         x = self.relu(x)
         x = self.fc2(x)     
         return x
+    
 
+
+dec_arch_params = {
+    
+   'fc1_out': 128,
+   
+   'width_in': 30,
+   'hight_in': 10,
+
+   'convtr1_ch_in': 32,
+   'convtr1_ch_out': 16,
+   'convtr1_kernel_size': (5,4),
+   'convtr1_stride': (2,2),
+   'convtr1_padding': (0,0),
+   'convtr1_output_padding': (1,1),
+   
+   'convtr2_kernel_size': (4,2),
+   'convtr2_stride': (2,2),
+   'convtr2_padding': (1,1),
+   'convtr2_output_padding': (0,0),
+   }
     
 class DecoderConv2D(nn.Module):
     
@@ -313,25 +334,48 @@ class DecoderConv2D(nn.Module):
                                        stride=dec_arch_params['convtr2_stride'], 
                                        padding=dec_arch_params['convtr2_padding'], 
                                        output_padding=dec_arch_params['convtr2_output_padding'])
-
+        # self.bn2 = nn.BatchNorm2d(num_features=1)
+        # self.ct3 = nn.ConvTranspose2d(in_channels=8, 
+        #                                out_channels=1, 
+        #                                kernel_size=3, 
+        #                                stride=2, 
+        #                                padding=1, 
+        #                                output_padding=1)
         
     def forward(self, x):
         x = x.reshape((x.shape[0], self.embedding_size))
         x = self.fc1(x)
+        # print(f'fc1 output: {x.shape}')
         x = self.relu(x)
         x = self.fc2(x)
+        # print(f'fc2 output: {x.shape}')
+        # print(f'relu2 output: {x.shape}')
         x = self.relu(x) 
         x = x.view(-1, 
                    self.dec_arch_params['convtr1_ch_in'], 
                    self.dec_arch_params['width_in'], 
                    self.dec_arch_params['hight_in'])
+        # print(f'unflatten output: {x.shape}')
         x = self.ct1(x)
+        # print(f'ct1 output: {x.shape}')
         x = self.bn1(x)
+        # print(f'bn1 output: {x.shape}')
         x = self.relu(x) 
         x = self.ct2(x)
         x = torch.sigmoid(x)
+        # print(f'final output: {x.shape}')
         return x
 
+# decoder = DecoderConv2D(n_timesteps, 
+#                         n_features, 
+#                         embedding_size, 
+#                         batch_size)
+# latent_vector = torch.ones((batch_size, embedding_size))
+# decoder.forward(latent_vector)
+
+# unflatten = nn.Unflatten(0, (32, 3, 3))
+# x = unflatten(torch.ones(288))
+# ct1(x)
 
 class Autoencoder(nn.Module):
     def __init__(self, 

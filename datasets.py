@@ -59,34 +59,36 @@ dataset_dict = {'UrbanSound': {'n_observations': 8_730,
                                                9: "street_music"
                                                }
                                 },
-                'SpeechCommands': {'n_observations': 8_730,
-                                    'n_classes': 10,
-                                    'loc': r'D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data',
-                                    'class_dict': {0: "air_conditioner",
-                                                   1: "car_horn",
-                                                   2: "children_playing",
-                                                   3: "dog_bark",
-                                                   4: "drilling",
-                                                   5: "engine_idling",
-                                                   6: "gun_shot",
-                                                   7: "jackhammer",
-                                                   8: "siren",
-                                                   9: "street_music"
+                'SpeechCommands': {'n_observations': 41_767,
+                                    'n_classes': 12,
+                                    'loc': r'D:\Thesis\Data Sets\Audio\SpeechCommands\preprocessed_data',
+                                    'class_dict': {0: "on",
+                                                   1: "off",
+                                                   2: "up",
+                                                   3: "down",
+                                                   4: "right",
+                                                   5: "left",
+                                                   6: "stop",
+                                                   7: "go",
+                                                   8: "backward",
+                                                   9: "forward",
+                                                   10: "no",
+                                                   11: "yes"
                                                    }
                                     },
-                'AudioMNIST':       {'n_observations': 8_730,
+                'AudioMNIST':       {'n_observations': 30_000,
                                     'n_classes': 10,
-                                    'loc': r'D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data',
-                                    'class_dict': {0: "air_conditioner",
-                                                   1: "car_horn",
-                                                   2: "children_playing",
-                                                   3: "dog_bark",
-                                                   4: "drilling",
-                                                   5: "engine_idling",
-                                                   6: "gun_shot",
-                                                   7: "jackhammer",
-                                                   8: "siren",
-                                                   9: "street_music"
+                                    'loc': r'D:\Thesis\Data Sets\Audio\AudioMNIST\preprocessed_data',
+                                    'class_dict': {0: "zero",
+                                                   1: "one",
+                                                   2: "two",
+                                                   3: "three",
+                                                   4: "four",
+                                                   5: "five",
+                                                   6: "six",
+                                                   7: "seven",
+                                                   8: "eight",
+                                                   9: "nine"
                                                    }
                                     }
                 }
@@ -274,6 +276,27 @@ def preprocess_and_save_urbansound_dataset(target_sample_rate: int=cfg.UrbanSoun
                 
 #     return X_trans, y
 
+def ts_scaler(X: torch.Tensor) -> list:
+    """
+    Parameters
+    ----------
+    X : torch.Tensor
+        Time series observations without target variable.
+
+    Returns
+    -------
+    X_scaled : torch.Tensor
+    X_min : float
+    X_max : float
+
+    """
+    X_min = torch.min(X)
+    X_max = torch.max(X)
+    X_scaled = (X - X_min)/(X_max - X_min)
+            
+    return X_scaled, X_min, X_max
+
+
 
 def prepare_inputdata(dataset_name: str,
                       transform_type: TransfType):
@@ -286,7 +309,7 @@ def prepare_inputdata(dataset_name: str,
                             n_mels=cfg[dataset_name].N_MELS
                             )
     
-    if transform_type == TransfType.MFCC:
+    elif transform_type == TransfType.MFCC:
         transformation = T.MFCC(
                             sample_rate=cfg[dataset_name].SAMPLE_RATE,
                             n_mfcc=cfg[dataset_name].N_MFCC,
@@ -298,7 +321,7 @@ def prepare_inputdata(dataset_name: str,
                                 }
                             )
     
-    if transform_type == TransfType.LFCC:
+    elif transform_type == TransfType.LFCC:
         transformation = T.LFCC(
                             sample_rate=cfg[dataset_name].SAMPLE_RATE,
                             n_lfcc=cfg[dataset_name].N_LFCC,
@@ -308,7 +331,8 @@ def prepare_inputdata(dataset_name: str,
                                 "hop_length": cfg[dataset_name].HOP_LENGTH
                                 }
                             )
-    
+    else:
+        raise NotImplementedError("Transformation Type: {transform_type} is not implemented")
     
     if dataset_name == "UrbanSound":
         X = torch.load(r"D:\Thesis\Data Sets\Audio\UrbanSound8K\preprocessed_data\signals.pt")
@@ -329,8 +353,11 @@ def prepare_inputdata(dataset_name: str,
         X_trans.append(transformed_signal)
         
     X_trans = torch.stack(X_trans, dim=0)
+    # X_trans = torch.squeeze(X_trans)
+    
+    X_scaled, X_min, X_max = ts_scaler(X_trans)
                 
-    return X_trans, y
+    return X_scaled, X_min, X_max, y
 
 
 # TODO: scaler
@@ -364,7 +391,7 @@ if __name__ == "__main__":
     #                                        )
     
     
-    DATASET = 'AudioMNIST' # "SpeechCommands" # "UrbanSound"
+    DATASET = "SpeechCommands" # 'AudioMNIST' # "SpeechCommands" # "UrbanSound"
     
     X, y = prepare_inputdata(dataset_name=DATASET, transform_type=TransfType.MFCC)
     

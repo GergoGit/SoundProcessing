@@ -9,7 +9,6 @@ import os
 
 from torch import nn
 # from torchsummary import summary
-
 import torch
 from torch.nn.utils import weight_norm
 # import torchinfo
