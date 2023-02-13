@@ -140,7 +140,7 @@ def calc_avgpool2d_output_size(input_size: tuple, kernel_size: tuple, stride: tu
     hight_output_size = floor((input_size[1] + 2*padding[1] - kernel_size[1])/stride[1]) + 1
     return width_output_size, hight_output_size
 
-def calculate_conv1d_block_output_size(input_size: int, params: dict):
+def calc_conv1d_block_output_size(input_size: int, params: dict):
     """
     Assuming we have 1 or 2 blocks containing conv1d and pooling1d layers after each other
     and we need to calculate the output size which is the input size of a fully connected layer
